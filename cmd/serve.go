@@ -40,6 +40,6 @@ func init() {
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	server := chat.NewServer()
+	server := chat.NewGaze()
 	server.Serve(bindAddr)
 }
