@@ -1,11 +1,11 @@
 package chat
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// Store interface for storing chat-related state
-// TODO currently NewGaze() hardcodes server initialization with
-// an InMemoryStore. Allow the store to be provided when more types
-// are supported.
+// Store interface for storing chat-related state,
+// such as rooms
 type Store interface {
 	Room(string) *Room
 	AddRoom(r *Room) error
@@ -36,7 +36,7 @@ func (s *InMemoryStore) Room(name string) *Room {
 // AddRoom adds a new room to the rooms map and notifies
 func (s *InMemoryStore) AddRoom(r *Room) error {
 	_, ok := s.rooms[r.name]
-	if !ok {
+	if ok {
 		return fmt.Errorf("Room %s already exists", r.name)
 	}
 	s.rooms[r.name] = r

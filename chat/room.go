@@ -27,7 +27,6 @@ func NewRoom(name string) *Room {
 
 // RunRoom run dat
 func (r *Room) Run() {
-
 	for {
 		msg := <-r.mq
 		for c := range r.clients {
