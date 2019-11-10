@@ -2,139 +2,39 @@ package chat
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
-	// "golang.org/x/crypto/ssh/terminal"
-	"github.com/shazow/ssh-chat/sshd/terminal"
 )
 
-var (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
+// TerminalUI for interfacing with gaze chat
+type TerminalUI interface {
 
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	// This should be a blocking listener that reads user input from the
+	// terminal and then writes the input to the websocket conn that is
+	// provided.
+	ListenShell(conn *websocket.Conn, done chan bool)
 
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = int64(512)
-)
-
-// shell is a container for reading from and writing
-// to stdout. This gets passed to a Terminal.
-type shell struct {
-	r io.Reader
-	w io.Writer
+	WriteShell(buf []byte) error
 }
 
-func (sh *shell) Read(data []byte) (n int, err error) {
-	return sh.r.Read(data)
+type GazeClient struct {
+	term TerminalUI
+	conn *websocket.Conn
+	done chan bool
 }
 
-func (sh *shell) Write(data []byte) (n int, err error) {
-	return sh.w.Write(data)
-}
-
-// Terminal that reads/writes to stdout
-type Client struct {
-	nickname string
-	terminal.Terminal
-	conn     *websocket.Conn
-	oldState *terminal.State
-	done     chan struct{}
-}
-
-// NewClientWithStdInOut creates a new terminal that
-// can read/write to stdout
-func NewClientWithStdInOut(conn *websocket.Conn, nick string) (cli *Client, err error) {
-	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	if err != nil {
-		panic(err)
-	}
-	sh := &shell{r: os.Stdin, w: os.Stdout}
-	cli = &Client{
-		Terminal: *terminal.NewTerminal(sh, ""),
-		nickname: nick,
-		conn:     conn,
-		oldState: oldState,
-		done:     make(chan struct{}),
-	}
-	cli.Terminal.SetEnterClear(true)
-	cli.conn.SetReadLimit(maxMessageSize)
-	return cli, nil
-}
-
-// Close releases the terminal from stdin/stdout
-func (c *Client) Close() {
-	fd := int(os.Stdin.Fd())
-	terminal.Restore(fd, c.oldState)
-}
-
-// ListenShell listens on the shell prompt for user input
-// and writes the input lines to the connection
-func (c *Client) ListenShell() {
-	defer func() {
-		c.conn.Close()
-	}()
-
-	fmt.Println("Ctrl-D to break")
-	c.SetPrompt(fmt.Sprintf("[%s]: ", c.nickname))
-
-	// Tell server my nickname
-	// Need to feed this back to shell prompt
-	msg := Message{Username: c.nickname, Command: "nick", Message: c.nickname}
-	c.conn.WriteJSON(&msg)
-
-	line, err := c.ReadLine()
-	for {
-		if err == io.EOF { // Ctrl-D exit so send out the done signal
-			c.Write([]byte(line))
-			err := c.conn.Close()
-			if err != nil {
-				return
-			}
-
-			// Wait for done signal with timeout
-			// select {
-			// case <-c.done:
-			// case <-time.After(time.Second):
-			// }
-			return
-		} else if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
-			line, err = c.ReadLine()
-		} else {
-			var v Message
-
-			if strings.HasPrefix(line, "/") {
-				matches := strings.SplitN(line, " ", 2)
-				v = Message{Username: c.nickname, Command: matches[0]}
-				if len(matches) > 1 {
-					v.Message = matches[1]
-				}
-			} else {
-				v = Message{Username: c.nickname, Message: line}
-			}
-			err := c.conn.WriteJSON(v)
-			if err != nil {
-				log.Println("read:", err)
-				return
-			}
-			line, err = c.ReadLine()
-		}
+func NewGazeClient(conn *websocket.Conn, term TerminalUI) *GazeClient {
+	return &GazeClient{
+		term: term,
+		conn: conn,
+		done: make(chan bool),
 	}
 }
 
 // ListenConnection listens on the connection and writes any
 // incoming lines to the terminal
-func (c *Client) ListenConnection() {
+func (c *GazeClient) ListenConnection() {
 	// Display msgs
 	for {
 		var msg Message
@@ -144,11 +44,13 @@ func (c *Client) ListenConnection() {
 			return
 		}
 		s := fmt.Sprintf("%s: %s\n", msg.Username, msg.Message)
-		c.Write([]byte(s))
+		c.term.WriteShell([]byte(s)) // Write the websocket msg to the terminal
 	}
 }
 
-func (c *Client) Run() {
+// Run the gaze client. This starts a go routine that listens for incoming
+// messages on the websocket, and runs a blocking listener on the terminal shell
+func (c *GazeClient) Run() {
 	go c.ListenConnection()
-	c.ListenShell()
+	c.term.ListenShell(c.conn, c.done)
 }

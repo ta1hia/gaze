@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -24,6 +23,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
 	"github.com/tahia-khan/gaze/chat"
+	"github.com/tahia-khan/gaze/chat/terms"
 )
 
 var (
@@ -39,40 +39,38 @@ var (
 communicating with a gaze chat server. The client provides a terminal
 as a text input/output environment and establishes a websocket client
 connection with the gaze server.`,
-		RunE: connect,
+		Run: connect,
 	}
 )
 
 func init() {
 	rootCmd.AddCommand(connectCmd)
 
-	connectCmd.Flags().StringVarP(&hostAddr, "host", "H", "localhost:8844", "address of server to connect to")
-	connectCmd.Flags().StringVarP(&channel, "room", "c", "", "room to connect to")
-	connectCmd.Flags().StringVarP(&nickname, "nick", "n", os.Getenv("USER"), "set nickname")
+	connectCmd.Flags().StringVarP(&hostAddr, "host", "H", "localhost:8844", "Address of the gaze server to connect to")
+	connectCmd.Flags().StringVarP(&channel, "room", "c", "", "Room to connect to; creates the room if it doesn't already exist")
+	connectCmd.Flags().StringVarP(&nickname, "nick", "n", os.Getenv("USER"), "Set nickname")
 	connectCmd.MarkFlagRequired("channel")
 
 }
 
-func connect(cmd *cobra.Command, args []string) error {
-	u := url.URL{Scheme: "ws", Host: hostAddr, Path: channel + "/join"}
+func connect(cmd *cobra.Command, args []string) {
+	u := url.URL{Scheme: "ws", Host: hostAddr, Path: channel + "/connect"}
 	log.Printf("connecting to %s as %s", u.String(), nickname)
 
+	// Create the websocket connection
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
 	defer c.Close()
 
-	cli, err := chat.NewClientWithStdInOut(c, nickname)
-	if err != nil {
-		log.Println("read:", err)
-		return err
-	}
-	defer cli.Close()
+	// Create the terminal ui
+	term := terms.NewTerminal(nickname)
+	defer term.Close()
 
-	go cli.ListenConnection()
-	cli.ListenShell()
+	// Create the gaze client
+	cli := chat.NewGazeClient(c, term)
 
-	fmt.Println("connect done")
-	return nil
+	// Run!
+	cli.Run()
 }
