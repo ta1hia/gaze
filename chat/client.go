@@ -84,15 +84,20 @@ func (c *Client) ListenShell() {
 	defer func() {
 		c.conn.Close()
 	}()
+
 	fmt.Println("Ctrl-D to break")
 	c.SetPrompt(fmt.Sprintf("[%s]: ", c.nickname))
+
+	// Tell server my nickname
+	// Need to feed this back to shell prompt
+	msg := Message{Username: c.nickname, Command: "nick", Message: c.nickname}
+	c.conn.WriteJSON(&msg)
 
 	line, err := c.ReadLine()
 	for {
 		if err == io.EOF { // Ctrl-D exit so send out the done signal
 			c.Write([]byte(line))
 			err := c.conn.Close()
-			// err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
 				return
 			}
@@ -106,7 +111,17 @@ func (c *Client) ListenShell() {
 		} else if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
 			line, err = c.ReadLine()
 		} else {
-			v := Message{Username: c.nickname, Message: line}
+			var v Message
+
+			if strings.HasPrefix(line, "/") {
+				matches := strings.SplitN(line, " ", 2)
+				v = Message{Username: c.nickname, Command: matches[0]}
+				if len(matches) > 1 {
+					v.Message = matches[1]
+				}
+			} else {
+				v = Message{Username: c.nickname, Message: line}
+			}
 			err := c.conn.WriteJSON(v)
 			if err != nil {
 				log.Println("read:", err)
@@ -131,4 +146,9 @@ func (c *Client) ListenConnection() {
 		s := fmt.Sprintf("%s: %s\n", msg.Username, msg.Message)
 		c.Write([]byte(s))
 	}
+}
+
+func (c *Client) Run() {
+	go c.ListenConnection()
+	c.ListenShell()
 }

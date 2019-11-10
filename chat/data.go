@@ -4,5 +4,6 @@ package chat
 type Message struct {
 	// Email    string `json:"email"`
 	Username string `json:"username"`
-	Message  string `json:"message"`
+	Command  string `json:"command"` // The command to run, eg "nick", "exit"
+	Message  string `json:"message"` // The message body
 }
