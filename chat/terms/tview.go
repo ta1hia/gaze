@@ -95,6 +95,8 @@ func (t *TVTerminal) ListenShell(conn *websocket.Conn, done chan bool) {
 					nick = name
 					prompt.SetLabel(fmt.Sprintf("%s: ", name))
 					t.app.SetRoot(chatGrid, true).SetFocus(prompt)
+					msg := Message{Username: nick, Command: "/nick", Message: nick}
+					conn.WriteJSON(&msg)
 				}
 
 			} else { // In all other cases, handle chat prompt input

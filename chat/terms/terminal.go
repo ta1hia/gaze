@@ -63,7 +63,7 @@ func (t *Terminal) ListenShell(conn *websocket.Conn, done chan bool) {
 
 	// Tell server my nickname
 	// Need to feed this back to shell prompt
-	msg := Message{Username: t.Nick, Command: "nick", Message: t.Nick}
+	msg := Message{Username: t.Nick, Command: "/nick", Message: t.Nick}
 	conn.WriteJSON(&msg)
 
 	line, err := t.ReadLine()
