@@ -88,6 +88,7 @@ func (t *Terminal) ListenShell(conn *websocket.Conn, done chan bool) {
 		} else if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
 			line, err = t.ReadLine()
 		} else {
+			// TODO make command parser helper and resuse
 			var v Message
 
 			if strings.HasPrefix(line, "/") {

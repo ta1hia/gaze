@@ -64,9 +64,12 @@ func connect(cmd *cobra.Command, args []string) {
 	}
 	defer c.Close()
 
-	// Create the terminal ui
-	term := terms.NewTerminal(nickname)
-	defer term.Close()
+	// Create an ssh-chat style terminal ui
+	// term := terms.NewTerminal(nickname)
+	// defer term.Close()
+
+	// Create a tview terminal ui
+	term := terms.NewTVTerminal()
 
 	// Create the gaze client
 	cli := chat.NewGazeClient(c, term)
