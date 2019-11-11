@@ -98,23 +98,13 @@ func (t *TVTerminal) ListenShell(conn *websocket.Conn, done chan bool) {
 				}
 
 			} else { // In all other cases, handle chat prompt input
+
 				// Clear the input field
 				line := prompt.GetText()
 				prompt.SetText("")
 
-				// TODO copied from terminal.go, make helper
-				var v Message
-
-				if strings.HasPrefix(line, "/") {
-					matches := strings.SplitN(line, " ", 2)
-					v = Message{Username: nick, Command: matches[0]}
-					if len(matches) > 1 {
-						v.Message = matches[1]
-					}
-				} else {
-					v = Message{Username: nick, Message: line}
-				}
-				err := conn.WriteJSON(v)
+				msg := ParseTerminalMessage(line, nick)
+				err := conn.WriteJSON(msg)
 				if err != nil {
 					log.Println("read:", err)
 					return nil

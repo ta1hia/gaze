@@ -11,14 +11,6 @@ import (
 	"github.com/shazow/ssh-chat/sshd/terminal"
 )
 
-// Message struct TODO where to put this
-type Message struct {
-	// Email    string `json:"email"`
-	Username string `json:"username"`
-	Command  string `json:"command"` // The command to run, eg "nick", "exit"
-	Message  string `json:"message"` // The message body
-}
-
 // shell is a container for reading from and writing
 // to stdout. This gets passed to a Terminal.
 type shell struct {
@@ -89,18 +81,8 @@ func (t *Terminal) ListenShell(conn *websocket.Conn, done chan bool) {
 			line, err = t.ReadLine()
 		} else {
 			// TODO make command parser helper and resuse
-			var v Message
-
-			if strings.HasPrefix(line, "/") {
-				matches := strings.SplitN(line, " ", 2)
-				v = Message{Username: t.Nick, Command: matches[0]}
-				if len(matches) > 1 {
-					v.Message = matches[1]
-				}
-			} else {
-				v = Message{Username: t.Nick, Message: line}
-			}
-			err := conn.WriteJSON(v)
+			msg := ParseTerminalMessage(line, t.Nick)
+			err := conn.WriteJSON(msg)
 			if err != nil {
 				log.Println("read:", err)
 				return
