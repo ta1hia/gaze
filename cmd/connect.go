@@ -47,15 +47,12 @@ func init() {
 	rootCmd.AddCommand(connectCmd)
 
 	connectCmd.Flags().StringVarP(&hostAddr, "host", "H", "localhost:8844", "Address of the gaze server to connect to")
-	connectCmd.Flags().StringVarP(&channel, "room", "c", "", "Room to connect to; creates the room if it doesn't already exist")
 	connectCmd.Flags().StringVarP(&nickname, "nick", "n", os.Getenv("USER"), "Set nickname")
-	connectCmd.MarkFlagRequired("channel")
 
 }
 
 func connect(cmd *cobra.Command, args []string) {
-	u := url.URL{Scheme: "ws", Host: hostAddr, Path: channel + "/connect"}
-	log.Printf("connecting to %s as %s", u.String(), nickname)
+	u := url.URL{Scheme: "ws", Host: hostAddr, Path: "connect"}
 
 	// Create the websocket connection
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)

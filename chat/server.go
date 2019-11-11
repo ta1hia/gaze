@@ -27,7 +27,7 @@ func NewGaze() *Gaze {
 	}
 
 	// Set up the websocket handler
-	server.router.HandleFunc("/{roomName}/connect", server.ConnectToRoomHandler)
+	server.router.HandleFunc("/connect", server.ConnectToRoomHandler)
 	return server
 }
 
@@ -101,41 +101,6 @@ func (g *Gaze) HandleMessage(msg Message, u *User) {
 
 	u.conn.WriteJSON(systemMsg)
 }
-
-// func (g *Gaze) ConnectToRoomHandler(w http.ResponseWriter, r *http.Request) {
-// 	roomName := mux.Vars(r)["roomName"]
-// 	// nick := mux.Vars(r)["nick"]
-// 	room := g.store.Room(roomName)
-// 	// log.Printf("ConnectToRoom: %s %s", roomName, nick)
-// 	log.Printf("ConnectToRoom: %s", roomName)
-
-// 	if room == nil { // If the room doesn't exist, create it
-// 		room = NewRoom(roomName)
-// 		g.store.AddRoom(room)
-// 	}
-
-// 	// Upgrade the HTTP connection to a websocket connection
-// 	ws, err := upgrader.Upgrade(w, r, nil)
-// 	if err != nil {
-// 		log.Printf("error: %v", err)
-// 		ws.Close()
-// 		return
-// 	}
-// 	defer ws.Close()
-
-// 	// Add user to the room's list of clients
-// 	// room.AddUser(nick, ws)
-// 	room.clients[ws] = true
-
-// 	for {
-// 		var msg Message
-// 		err = ws.ReadJSON(&msg)
-// 		log.Printf("JoinRoom: %v: %v", msg.Username, msg.Message)
-// 		if len(msg.Message) > 0 {
-// 			room.mq <- msg
-// 		}
-// 	}
-// }
 
 func (s *Gaze) Serve(bind string) {
 
