@@ -61,9 +61,8 @@ func (g *Gaze) ConnectToRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Would be good to implement this like how routers set handlers on the fly
-// This should send out System messages (from the system directly
-// to the client)
+// Swap this out with commands.go command dispatcher!
+// Lobby should be its own kind of room
 func (g *Gaze) HandleMessage(msg Message, u *User) {
 
 	// Regex for parsing out opts
@@ -71,12 +70,11 @@ func (g *Gaze) HandleMessage(msg Message, u *User) {
 
 	systemMsg := Message{Username: "lobby"}
 
-	// TODO add "help"
 	switch msg.Command {
 	case "/nick": // Changes user's nick name
 		// TODO handle from the client side
 		u.nick = msg.Message
-		systemMsg.Message = fmt.Sprintf("nickname changed to %s", u.nick)
+		systemMsg.Message = fmt.Sprintf("setting nickname to %s", u.nick)
 	case "/list": // List all rooms
 		// List of all rooms in g.store.rooms
 		systemMsg.Message = fmt.Sprintf("this should print all rooms")
@@ -90,7 +88,6 @@ func (g *Gaze) HandleMessage(msg Message, u *User) {
 
 		// Do a room.AddUser(u) so the user gets added to the room
 		room.AddUser(u)
-		room.clients[u.conn] = true
 
 		// Set u.room
 		u.room = room
@@ -99,7 +96,7 @@ func (g *Gaze) HandleMessage(msg Message, u *User) {
 		systemMsg = msg
 	}
 
-	u.conn.WriteJSON(systemMsg)
+	u.Send(&systemMsg)
 }
 
 func (s *Gaze) Serve(bind string) {

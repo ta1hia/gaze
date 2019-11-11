@@ -43,8 +43,14 @@ func (c *GazeClient) ListenConnection() {
 			log.Println("read:", err)
 			return
 		}
-		s := fmt.Sprintf("%s: %s\n", msg.Username, msg.Message)
-		c.term.WriteShell([]byte(s)) // Write the websocket msg to the terminal
+
+		if msg.Username != "" {
+			s := fmt.Sprintf("%s: %s\n", msg.Username, msg.Message)
+			c.term.WriteShell([]byte(s)) // Write the websocket msg to the terminal
+		} else {
+			s := fmt.Sprintf("%s\n", msg.Message)
+			c.term.WriteShell([]byte(s)) // Write the websocket msg to the terminal
+		}
 	}
 }
 
