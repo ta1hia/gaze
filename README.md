@@ -9,6 +9,10 @@ $ gaze serve --bind localhost:8844
 
 ##### Join a room as a client:
 ```
-$ gaze connect --room catdog --nick alphonso
+$ gaze connect 
 ```
-This creates the `catdog` room if it doesn't already exist, and connects you to the room using `nick` as your username.
+Once you're connected, you can join a room:
+```
+/join catdog
+```
+This creates the `catdog` room if it doesn't already exist and connects you to the room. 
