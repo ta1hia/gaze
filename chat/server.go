@@ -4,26 +4,78 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
-// Configure the upgrader
+// Websocket upgrader instance
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 	return true
 }}
 
 // Gaze is the container for a gaze chat server
 type Gaze struct {
-	router *mux.Router
-	store  *Store
+	router   *mux.Router
+	store    *Store
+	commands CommandSet
 }
 
 func NewGaze() *Gaze {
+
+	// Create "lobby" command set. The lobby represents the default
+	// channel that users get dropped into when they are not actively
+	// connected to a room
+	cmdSet := CommandSet{}
+	cmdSet.Add(&Command{ // Add join
+		Label: "/join",
+		Usage: "Join a room",
+		Handler: func(msg *Message, sender *User, v interface{}) {
+			store := v.(*Store)
+
+			room := store.Room(msg.Message) // If the room doesn't exist, create it
+			if room == nil {
+				room = NewRoom(msg.Message)
+				store.AddRoom(room)
+			}
+			room.AddUser(sender)
+			sender.room = room
+
+			systemMsg := Message{Message: fmt.Sprintf("joining '%s'", msg.Message)}
+			sender.Send(&systemMsg)
+		},
+	})
+	cmdSet.Add(&Command{ // Add list
+		Label: "/list",
+		Usage: "lists all rooms",
+		Handler: func(msg *Message, sender *User, v interface{}) {
+			store := v.(*Store)
+
+			systemMsg := Message{}
+			var b strings.Builder
+			for name := range store.rooms {
+				fmt.Fprintf(&b, "%s\n", name)
+			}
+			systemMsg.Message = b.String()
+			sender.Send(&systemMsg)
+		},
+	})
+	cmdSet.Add(&Command{ // Add nick
+		Label: "/nick",
+		Usage: "Change current nickname",
+		Handler: func(msg *Message, sender *User, v interface{}) {
+			sender.nick = msg.Message
+			systemMsg := Message{Message: fmt.Sprintf("Setting nickname to '%s'", msg.Message)}
+			sender.Send(&systemMsg)
+		},
+	})
+	cmdSet.Add(&Help) // Add help
+
 	server := &Gaze{
-		router: mux.NewRouter(),
-		store:  NewStore(),
+		router:   mux.NewRouter(),
+		store:    NewStore(),
+		commands: cmdSet,
 	}
 
 	// Set up the websocket handler
@@ -56,47 +108,20 @@ func (g *Gaze) ConnectToRoomHandler(w http.ResponseWriter, r *http.Request) {
 		if u.room != nil { // Send the msg to the client's room
 			u.room.mq <- msg
 		} else {
-			g.HandleMessage(msg, &u) // Send the msg to the lobby
+			g.HandleMessage(&msg, &u) // Send the msg to the lobby handler
 		}
 	}
+
 }
 
-// Swap this out with commands.go command dispatcher!
-// Lobby should be its own kind of room
-func (g *Gaze) HandleMessage(msg Message, u *User) {
-
-	// Regex for parsing out opts
-	// r, _ := regexp.Compile("(?i)^(\\w+)\\s(.+)")
-
-	systemMsg := Message{Username: "lobby"}
-
-	switch msg.Command {
-	case "/nick": // Changes user's nick name
-		// TODO handle from the client side
-		u.nick = msg.Message
-		systemMsg.Message = fmt.Sprintf("setting nickname to %s", u.nick)
-	case "/list": // List all rooms
-		// List of all rooms in g.store.rooms
-		systemMsg.Message = fmt.Sprintf("this should print all rooms")
-	case "/join": // Join a room
-
-		room := g.store.Room(msg.Message) // If the room doesn't exist, create it
-		if room == nil {
-			room = NewRoom(msg.Message)
-			g.store.AddRoom(room)
-		}
-
-		// Do a room.AddUser(u) so the user gets added to the room
-		room.AddUser(u)
-
-		// Set u.room
-		u.room = room
-		systemMsg.Message = fmt.Sprintf("joining '%s' room", msg.Message)
-	default:
-		systemMsg = msg
+func (g *Gaze) HandleMessage(msg *Message, u *User) {
+	if msg.Command == "/help" {
+		g.commands["/help"].Handler(msg, u, g.commands)
+	} else if msg.Command != "" {
+		g.commands.Dispatch(msg, u, g.store)
+	} else {
+		u.Send(msg)
 	}
-
-	u.Send(&systemMsg)
 }
 
 func (s *Gaze) Serve(bind string) {
