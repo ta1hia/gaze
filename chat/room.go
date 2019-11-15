@@ -1,19 +1,14 @@
 package chat
 
 import (
+	"fmt"
 	"log"
+	"strings"
 )
 
 // TODO: room clean up
 // TODO: make the lobby a room
 // TODO: support private rooms
-type Channel interface {
-	SetMessageHandler(handler func(sender *User, msg *Message, v interface{}))
-}
-
-type Lobby struct {
-	Commands CommandSet //map[string]*Command
-}
 
 // A room is a named group of one or more users which will all
 // receive messages addressed to that room.  The room is created
@@ -38,13 +33,32 @@ type Room struct {
 // NewRoom initializes a new Room struct
 func NewRoom(name string) *Room {
 
-	// Initialize the set of commands for this room
-	// TODO probably make this a global in commands.go since
-	// basic rooms will all have the same commands
 	cmdSet := CommandSet{}
+	cmdSet.Add(&Command{
+		Label: "/members",
+		Usage: "List all members currently connected to this room",
+		Handler: func(msg *Message, sender *User, v interface{}) {
+			room := v.(*Room)
+			systemMsg := Message{}
+			var b strings.Builder
+			for name := range room.users {
+				fmt.Fprintf(&b, "%s\n", name)
+			}
+			systemMsg.Message = b.String()
+			sender.Send(&systemMsg)
+		},
+	})
+	cmdSet.Add(&Command{
+		Label: "/exit",
+		Usage: "Exit the current room",
+		Handler: func(msg *Message, sender *User, v interface{}) {
+			room := v.(*Room)
+			room.RemoveUser(sender)
+			systemMsg := Message{Message: fmt.Sprintf("Exiting '%s'", room.name)}
+			sender.Send(&systemMsg)
+		},
+	})
 	cmdSet.Add(&Help)
-	cmdSet.Add(&Members)
-	cmdSet.Add(&ExitRoom)
 
 	return &Room{
 		name:  name,
@@ -66,6 +80,7 @@ func (r *Room) AddUser(u *User) error {
 func (r *Room) RemoveUser(u *User) error {
 	delete(r.users, u.nick)
 	u.room = nil
+	// u.channel = lobby
 	return nil
 }
 
@@ -75,7 +90,9 @@ func (r *Room) Run() {
 		msg := <-r.mq
 
 		// If its a commands (ie /something), run its handler
-		if msg.Command != "" {
+		if msg.Command == "/help" {
+			r.Commands["/help"].Handler(&msg, r.users[msg.Username], r.Commands)
+		} else if msg.Command != "" {
 			r.Commands.Dispatch(&msg, r.users[msg.Username], r)
 		} else { // Otherwise its a regular message - broadcast as usual
 			r.Broadcast(&msg)
@@ -93,5 +110,4 @@ func (r *Room) Broadcast(msg *Message) {
 			delete(r.users, nick)
 		}
 	}
-
 }

@@ -16,12 +16,13 @@ type User struct {
 
 	conn *websocket.Conn
 
+	// Room that the user is currently connected to. If nil, we
+	// assume that the user is connected to the lobby
 	room *Room
 }
 
 func NewUser(nick string, c *websocket.Conn) *User {
 	return &User{
-		// uid:  uuid.New().String(),
 		nick: nick,
 		conn: c,
 	}
