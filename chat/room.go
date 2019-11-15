@@ -2,8 +2,6 @@ package chat
 
 import (
 	"log"
-
-	"github.com/gorilla/websocket"
 )
 
 // TODO: room clean up
@@ -13,20 +11,28 @@ type Channel interface {
 	SetMessageHandler(handler func(sender *User, msg *Message, v interface{}))
 }
 
+type Lobby struct {
+	Commands CommandSet //map[string]*Command
+}
+
 // A room is a named group of one or more users which will all
 // receive messages addressed to that room.  The room is created
 // implicitly when the first client joins it, and the room ceases to
 // exist when the last client leaves it (TODO).  While rooms exists, any
 // client can reference the room using the name of the room.
 type Room struct {
-	name    string
-	clients map[*websocket.Conn]bool
-	users   map[string]*User // map of user nick's to User object, ie all active websocket connections
-	mq      chan Message
+	name string
+
+	// Message queue
+	mq chan Message
+
+	// Map of all active connections. Maps user nick's to User.
+	// TODO add/remove lock
+	users map[string]*User
 
 	done chan struct{}
 
-	Commands CommandSet //map[string]*Command
+	Commands CommandSet
 }
 
 // NewRoom initializes a new Room struct
@@ -37,6 +43,8 @@ func NewRoom(name string) *Room {
 	// basic rooms will all have the same commands
 	cmdSet := CommandSet{}
 	cmdSet.Add(&Help)
+	cmdSet.Add(&Members)
+	cmdSet.Add(&ExitRoom)
 
 	return &Room{
 		name:  name,
@@ -48,9 +56,16 @@ func NewRoom(name string) *Room {
 	}
 }
 
-// func (r *Room) AddUser(nick string, c *websocket.Conn) error {
+// AddUser adds a user to the map of currently connected users
 func (r *Room) AddUser(u *User) error {
 	r.users[u.nick] = u
+	return nil
+}
+
+// RemoveUser removes a users from the room
+func (r *Room) RemoveUser(u *User) error {
+	delete(r.users, u.nick)
+	u.room = nil
 	return nil
 }
 
@@ -61,17 +76,14 @@ func (r *Room) Run() {
 
 		// If its a commands (ie /something), run its handler
 		if msg.Command != "" {
-			cmd, ok := r.Commands[msg.Command]
-			if !ok { // TODO error for invalid command
-				continue
-			}
-			cmd.Handler(&msg, r)
-		} else { // Otherwise broadcast as usual
+			r.Commands.Dispatch(&msg, r.users[msg.Username], r)
+		} else { // Otherwise its a regular message - broadcast as usual
 			r.Broadcast(&msg)
 		}
 	}
 }
 
+// Broadcast a message to all users currently connected to the room
 func (r *Room) Broadcast(msg *Message) {
 	for nick, u := range r.users {
 		err := u.conn.WriteJSON(msg)
