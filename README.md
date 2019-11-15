@@ -11,8 +11,8 @@ $ gaze serve --bind localhost:8844
 ```
 $ gaze connect 
 ```
-Once you're connected, start/join a room like so:
-
+Once you're connected, you can join a room:
 ```
-$ /join catdog 
+/join catdog 
 ```
+This creates the `catdog` room if it doesn't already exist and connects you to the room. 
