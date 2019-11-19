@@ -5,26 +5,16 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/tahia-khan/gaze/chat/terms"
 )
 
-// TerminalUI for interfacing with gaze chat
-type TerminalUI interface {
-
-	// This should be a blocking listener that reads user input from the
-	// terminal and then writes the input to the websocket conn that is
-	// provided.
-	ListenShell(conn *websocket.Conn, done chan bool)
-
-	WriteShell(buf []byte) error
-}
-
 type GazeClient struct {
-	term TerminalUI
+	term terms.TerminalUI
 	conn *websocket.Conn
 	done chan bool
 }
 
-func NewGazeClient(conn *websocket.Conn, term TerminalUI) *GazeClient {
+func NewGazeClient(conn *websocket.Conn, term terms.TerminalUI) *GazeClient {
 	return &GazeClient{
 		term: term,
 		conn: conn,
