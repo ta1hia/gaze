@@ -1,11 +1,12 @@
-package chat
+package client
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/gorilla/websocket"
-	"github.com/tahia-khan/gaze/chat/terms"
+	"github.com/tahia-khan/gaze/chat"
+	"github.com/tahia-khan/gaze/client/terms"
 )
 
 type GazeClient struct {
@@ -27,7 +28,7 @@ func NewGazeClient(conn *websocket.Conn, term terms.TerminalUI) *GazeClient {
 func (c *GazeClient) ListenConnection() {
 	// Display msgs
 	for {
-		var msg Message
+		var msg chat.Message
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("read:", err)

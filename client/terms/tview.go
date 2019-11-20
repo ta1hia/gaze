@@ -8,6 +8,7 @@ import (
 	"github.com/gdamore/tcell"
 	"github.com/gorilla/websocket"
 	"github.com/rivo/tview"
+	"github.com/tahia-khan/gaze/chat"
 )
 
 // TVTerminal is a terminal chat ui using tview
@@ -95,7 +96,7 @@ func (t *TVTerminal) ListenShell(conn *websocket.Conn, done chan bool) {
 					nick = name
 					prompt.SetLabel(fmt.Sprintf("%s: ", name))
 					t.app.SetRoot(chatGrid, true).SetFocus(prompt)
-					msg := Message{Username: nick, Command: "/nick", Message: nick}
+					msg := chat.Message{Username: nick, Command: "/nick", Message: nick}
 					conn.WriteJSON(&msg)
 				}
 

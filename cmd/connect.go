@@ -22,8 +22,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
-	"github.com/tahia-khan/gaze/chat"
-	"github.com/tahia-khan/gaze/chat/terms"
+	"github.com/tahia-khan/gaze/client"
+	"github.com/tahia-khan/gaze/client/terms"
 )
 
 var (
@@ -69,7 +69,7 @@ func connect(cmd *cobra.Command, args []string) {
 	term := terms.NewTVTerminal()
 
 	// Create the gaze client
-	cli := chat.NewGazeClient(c, term)
+	cli := client.NewGazeClient(c, term)
 
 	// Run!
 	cli.Run()

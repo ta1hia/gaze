@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/shazow/ssh-chat/sshd/terminal"
+	"github.com/tahia-khan/gaze/chat"
 )
 
 // shell is a container for reading from and writing
@@ -63,7 +64,7 @@ func (t *Terminal) ListenShell(conn *websocket.Conn, done chan bool) {
 
 	// Tell server my nickname
 	// Need to feed this back to shell prompt
-	msg := Message{Username: t.Nick, Command: "/nick", Message: t.Nick}
+	msg := chat.Message{Username: t.Nick, Command: "/nick", Message: t.Nick}
 	conn.WriteJSON(&msg)
 
 	line, err := t.ReadLine()

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
+	"github.com/tahia-khan/gaze/chat"
 )
 
 // TerminalUI for interfacing with gaze chat
@@ -17,28 +18,17 @@ type TerminalUI interface {
 	WriteShell(buf []byte) error
 }
 
-// Message struct - repeated
-type Message struct {
-	// Email    string `json:"email"`
-	Username string `json:"username"`
-	Command  string `json:"command"` // The command to run, eg "nick", "exit"
-	Message  string `json:"message"` // The message body
-}
-
 // ParseTerminalMessage parse user input from a terminal into
 // a Message struct
 // TODO throw out blank msgs, raise error
-func ParseTerminalMessage(line, nick string) *Message {
-	var msg Message
-
+func ParseTerminalMessage(line, nick string) *chat.Message {
 	if strings.HasPrefix(line, "/") {
 		matches := strings.SplitN(line, " ", 2)
-		msg = Message{Username: nick, Command: matches[0]}
+		msg := chat.Message{Username: nick, Command: matches[0]}
 		if len(matches) > 1 {
 			msg.Message = matches[1]
 		}
-	} else {
-		msg = Message{Username: nick, Message: line}
+		return &msg
 	}
-	return &msg
+	return &chat.Message{Username: nick, Message: line}
 }
